@@ -3,7 +3,7 @@ Contributors: kgmservizi
 Donate link: https://kgmservizi.com
 Tags: disable, media, thumbnails, disable thumbnails, disable threshold, disable images, image options
 Requires at least: 4.6
-Tested up to: 6.6
+Tested up to: 6.7
 Requires PHP: 5.6
 Stable tag: 0.5.2
 License: GPLv2 or later
