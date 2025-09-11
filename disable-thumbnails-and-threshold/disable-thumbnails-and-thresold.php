@@ -1,7 +1,7 @@
 <?php
 /* 
 Plugin Name: Disable Thumbnails, Threshold and Image Options
-Version: 0.5.2
+Version: 0.6
 Description: Disable Thumbnails, Threshold and Image Options
 Author: KGM Servizi
 Author URI: https://kgmservizi.com
@@ -13,114 +13,197 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
+// Define plugin constants for better maintainability
+define( 'KGM_QUALITY_OPTION', 'kgmimgquality_option_name' );
+define( 'KGM_THRESHOLD_OPTION', 'kgmdisablethreshold_option_name' );
+define( 'KGM_THUMBNAILS_OPTION', 'kgmdisablethumbnails_option_name' );
+
+// Check WordPress version compatibility - requires WordPress 5.4+ for PHP 7.4+ support
+if ( version_compare( get_bloginfo( 'version' ), '5.4', '<' ) ) {
+	add_action( 'admin_notices', fn() => 
+		print '<div class="notice notice-error"><p><strong>Disable Thumbnails, Threshold and Image Options</strong> requires WordPress 5.4 or higher (PHP 7.4+). Please update WordPress.</p></div>'
+	);
+	return;
+}
+
 if ( is_admin() ) {
-	include( plugin_dir_path( __FILE__ ) . 'includes/option-thumbnails.php');
-	include( plugin_dir_path( __FILE__ ) . 'includes/option-quality.php');
-	include( plugin_dir_path( __FILE__ ) . 'includes/option-threshold-exif.php');
+	// Use include_once to prevent multiple inclusions and potential fatal errors
+	include_once( plugin_dir_path( __FILE__ ) . 'includes/option-thumbnails.php');
+	include_once( plugin_dir_path( __FILE__ ) . 'includes/option-quality.php');
+	include_once( plugin_dir_path( __FILE__ ) . 'includes/option-threshold-exif.php');
 	add_filter( 'plugin_action_links_' . plugin_basename(__FILE__), 'kgmimage_action_links' );
 	add_action( 'admin_enqueue_scripts', 'kgmimage_admin_styles' );
 }
 
 /**
  *  
- * Retrieve options for quality and thresold
+ * Retrieve options for quality and threshold
+ * Cache options globally to avoid multiple database calls
  * 
  */
-$kgmimgquality_options       = get_option( 'kgmimgquality_option_name' );
-$kgmdisablethreshold_options = get_option( 'kgmdisablethreshold_option_name' );
+$GLOBALS['kgmimgquality_options']       = get_option( KGM_QUALITY_OPTION );
+$GLOBALS['kgmdisablethreshold_options'] = get_option( KGM_THRESHOLD_OPTION );
 
-/**
- *  
- * Retrieve image quality value
- * 
- */
-if ( is_array( $kgmimgquality_options ) ) {
-	if ( $kgmimgquality_options['jpeg_quality'] != null ) {
-		$jpeg_quality = $kgmimgquality_options['jpeg_quality'];
+// Initialize with current WordPress values if options don't exist
+if ( false === $GLOBALS['kgmimgquality_options'] ) {
+	// Get current WordPress JPEG quality (respects existing filters/plugins)
+	$current_quality = apply_filters( 'jpeg_quality', 82 );
+	$GLOBALS['kgmimgquality_options'] = [ 'jpeg_quality' => $current_quality ];
+	
+	// Only update if we have permission - only admin can activate plugins
+	if ( is_admin() && current_user_can( 'manage_options' ) ) {
+		update_option( KGM_QUALITY_OPTION, $GLOBALS['kgmimgquality_options'] );
 	}
 }
 
-/**
- *  
- * Set new image quality
- * 
- */
-if ( is_array( $kgmimgquality_options ) ) {
-	if ( $kgmimgquality_options['jpeg_quality'] != null && intval($kgmimgquality_options['jpeg_quality']) > 0 && intval($kgmimgquality_options['jpeg_quality']) <= 100 ) {
-		add_filter("jpeg_quality", function () use ($jpeg_quality) {
-			return intval($jpeg_quality);
-		});
+if ( false === $GLOBALS['kgmdisablethreshold_options'] ) {
+	// Get current WordPress big image threshold (respects existing filters/plugins)
+	$current_threshold = apply_filters( 'big_image_size_threshold', 2560 );
+	$GLOBALS['kgmdisablethreshold_options'] = [ 'new_threshold' => $current_threshold ];
+	
+	// Only update if we have permission - only admin can activate plugins
+	if ( is_admin() && current_user_can( 'manage_options' ) ) {
+		update_option( KGM_THRESHOLD_OPTION, $GLOBALS['kgmdisablethreshold_options'] );
 	}
 }
 
+// Hook to apply filters after themes are loaded to ensure priority
+add_action( 'after_setup_theme', 'kgmdttio_apply_filters', 20 );
+
 /**
- *  
- * Retrieve thresold size
- * 
+ * JPEG Quality filter callback
  */
-if ( is_array( $kgmdisablethreshold_options ) ) {
-	if ( $kgmdisablethreshold_options['new_threshold'] != null ) {
-		$threshold = $kgmdisablethreshold_options['new_threshold'];
+function kgmdttio_jpeg_quality_filter(): int {
+	$kgmimgquality_options = $GLOBALS['kgmimgquality_options'] ?? get_option( KGM_QUALITY_OPTION, [] );
+	
+	if ( ! is_array( $kgmimgquality_options ) || ! isset( $kgmimgquality_options['jpeg_quality'] ) ) {
+		return 82; // WordPress default
 	}
+	
+	$quality = intval( $kgmimgquality_options['jpeg_quality'] );
+	
+	// Validate quality range (0-100)
+	if ( $quality < 0 || $quality > 100 ) {
+		return 82; // WordPress default
+	}
+	
+	return $quality;
 }
 
 /**
- *  
- * Set new thresold
- * 
+ * Big image threshold filter callback
  */
-if ( !empty( $kgmdisablethreshold_options['new_threshold'] ) && intval( $kgmdisablethreshold_options['new_threshold']) > 0 ) {
-	add_filter("big_image_size_threshold", function () use ($threshold) {
-		return intval($threshold);
-	});
+function kgmdttio_big_image_threshold_filter(): int {
+	$kgmdisablethreshold_options = $GLOBALS['kgmdisablethreshold_options'] ?? get_option( KGM_THRESHOLD_OPTION, [] );
+	
+	if ( ! is_array( $kgmdisablethreshold_options ) || ! isset( $kgmdisablethreshold_options['new_threshold'] ) ) {
+		return 2560; // WordPress default
+	}
+	
+	$threshold = intval( $kgmdisablethreshold_options['new_threshold'] );
+	
+	// Validate threshold is positive
+	if ( $threshold <= 0 ) {
+		return 2560; // WordPress default
+	}
+	
+	return $threshold;
 }
 
 /**
- *  
- * Remove big image threshold
- * 
+ * Thumbnail sizes filter callback
  */
-if ( is_array( $kgmdisablethreshold_options ) ) {
-	if ( $kgmdisablethreshold_options['disable_threshold'] ?? null ) {
-		if ($kgmdisablethreshold_options['disable_threshold'] == 'disable_threshold') {
-			add_filter( 'big_image_size_threshold', '__return_false' );
+function kgmdttio_thumbnail_sizes_filter( array $sizes ): array {
+	$kgmdisablethumbnails_options = $GLOBALS['kgmdisablethumbnails_options'] ?? get_option( KGM_THUMBNAILS_OPTION, [] );
+	
+	if ( ! is_array( $kgmdisablethumbnails_options ) || empty( $kgmdisablethumbnails_options ) ) {
+		return $sizes;
+	}
+	
+	// Validate that all values in the array are strings (security check)
+	$valid_options = array_filter( $kgmdisablethumbnails_options, 'is_string' );
+	
+	return array_diff( $sizes, $valid_options );
+}
+
+/**
+ * Apply plugin filters after themes are loaded to ensure priority
+ */
+function kgmdttio_apply_filters(): void {
+	// Prevent multiple applications
+	static $applied = false;
+	if ( $applied ) {
+		return;
+	}
+	$applied = true;
+	
+	// Remove any existing filters to prevent accumulation
+	remove_filter( 'jpeg_quality', 'kgmdttio_jpeg_quality_filter' );
+	remove_filter( 'big_image_size_threshold', 'kgmdttio_big_image_threshold_filter' );
+	remove_filter( 'intermediate_image_sizes', 'kgmdttio_thumbnail_sizes_filter' );
+	
+	// Safely get options with fallback
+	$kgmimgquality_options = $GLOBALS['kgmimgquality_options'] ?? get_option( KGM_QUALITY_OPTION, [] );
+	$kgmdisablethreshold_options = $GLOBALS['kgmdisablethreshold_options'] ?? get_option( KGM_THRESHOLD_OPTION, [] );
+	$kgmdisablethumbnails_options = $GLOBALS['kgmdisablethumbnails_options'] ?? get_option( KGM_THUMBNAILS_OPTION, [] );
+	
+	// Apply JPEG quality filter
+	$jpeg_quality = null;
+	if ( is_array( $kgmimgquality_options ) ) {
+		$jpeg_quality = $kgmimgquality_options['jpeg_quality'] ?? null;
+	}
+	
+	if ( $jpeg_quality && is_numeric($jpeg_quality) && ($quality = intval($jpeg_quality)) > 0 && $quality <= 100 ) {
+		add_filter("jpeg_quality", 'kgmdttio_jpeg_quality_filter', 100);
+	}
+	
+	// Apply threshold filters
+	if ( is_array( $kgmdisablethreshold_options ) ) {
+		// Set new threshold
+		if ( !empty( $kgmdisablethreshold_options['new_threshold'] ) && is_numeric($kgmdisablethreshold_options['new_threshold']) && ($threshold_int = intval($kgmdisablethreshold_options['new_threshold'])) > 0 ) {
+			add_filter("big_image_size_threshold", 'kgmdttio_big_image_threshold_filter', 100);
+		}
+		
+		// Disable threshold
+		if ( $kgmdisablethreshold_options['disable_threshold'] ?? null ) {
+			if ($kgmdisablethreshold_options['disable_threshold'] == 'disable_threshold') {
+				add_filter( 'big_image_size_threshold', '__return_false', 100 );
+			}
+		}
+		
+		// Disable EXIF rotation
+		if ( $kgmdisablethreshold_options['disable_image_rotation_exif'] ?? null ) {
+			if ($kgmdisablethreshold_options['disable_image_rotation_exif'] == 'disable_image_rotation_exif') {
+				add_filter( 'wp_image_maybe_exif_rotate', '__return_zero', 100, 2 );
+			}
 		}
 	}
-}
-
-/**
- *  
- * Unset EXIF rotation
- * 
- */
-if ( is_array( $kgmdisablethreshold_options ) ) {
-	if ( $kgmdisablethreshold_options['disable_image_rotation_exif'] ?? null ) {
-		if ($kgmdisablethreshold_options['disable_image_rotation_exif'] == 'disable_image_rotation_exif') {
-			add_filter( 'wp_image_maybe_exif_rotate', '__return_zero', 10, 2 );
-		}
+	
+	// Apply thumbnail size filters
+	if ( !empty( $kgmdisablethumbnails_options ) ) {
+		add_filter( 'intermediate_image_sizes', 'kgmdttio_thumbnail_sizes_filter', 100);
 	}
 }
 
-/**
- *  
- * Disable image sizes checked
- * 
- */
-if ( !empty ( get_option( 'kgmdisablethumbnails_option_name' ) ) ) {
-	add_filter( 'intermediate_image_sizes', function($sizes) {
-		return array_diff( $sizes, get_option( 'kgmdisablethumbnails_option_name' ) );
-	});
-}
+// All filters are now applied in kgmdttio_apply_filters() function after themes are loaded
 
 /**
  * 
  * Add link on plugin list page
  * 
  */
-function kgmimage_action_links( $actions ) {
-	$mylinks = array( '<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmdisablethumbnails') ) .'">Image sizes</a>', '<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmimgquality') ) .'">Image Quality</a>', '<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmdisablethreshold') ) .'">Threshold & EXIF</a>' );
-	$actions = array_merge( $mylinks, $actions );
-	return $actions;
+function kgmimage_action_links( array $actions ): array {
+	// Check if user has proper capabilities before showing action links
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return $actions;
+	}
+	
+	$mylinks = [ 
+		'<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmdisablethumbnails') ) .'">Image sizes</a>', 
+		'<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmimgquality') ) .'">Image Quality</a>', 
+		'<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmdisablethreshold') ) .'">Threshold & EXIF</a>' 
+	];
+	return array_merge( $mylinks, $actions );
 }
 
 /**
@@ -128,15 +211,24 @@ function kgmimage_action_links( $actions ) {
  * Load admin styles
  * 
  */
-function kgmimage_admin_styles($hook) {
+function kgmimage_admin_styles( string $hook ): void {
 	/**
-	 * Check if in plugin options page
+	 * Check if in plugin options page and user has proper capabilities
 	 */
-	$screen = get_current_screen();
-	if ( $screen->base == 'tools_page_kgmdisablethumbnails' || $screen->base == 'tools_page_kgmdisablethreshold' ) {
-		wp_enqueue_style( 'kgmdimage_admin_css', plugins_url('includes/admin.css', __FILE__) );
-	} else {
+	if ( ! current_user_can( 'manage_options' ) ) {
 		return;
+	}
+	
+	$screen = get_current_screen();
+	if ( ! $screen ) {
+		return;
+	}
+	
+	if ( $screen->base === 'tools_page_kgmdisablethumbnails' || $screen->base === 'tools_page_kgmdisablethreshold' ) {
+		$css_url = plugins_url('includes/admin.css', __FILE__);
+		if ( $css_url ) {
+			wp_enqueue_style( 'kgmdimage_admin_css', $css_url );
+		}
 	}
 }
 
@@ -146,8 +238,8 @@ function kgmimage_admin_styles($hook) {
  * 
  */
 register_uninstall_hook( __FILE__, 'kgmdttio_plugin_uninstall' );
-function kgmdttio_plugin_uninstall() {
-    delete_option( 'kgmdisablethumbnails_option_name' );
-    delete_option( 'kgmdisablethreshold_option_name' );
-    delete_option( 'kgmimgquality_option_name' );
+function kgmdttio_plugin_uninstall(): void {
+    delete_option( KGM_THUMBNAILS_OPTION );
+    delete_option( KGM_THRESHOLD_OPTION );
+    delete_option( KGM_QUALITY_OPTION );
 }
