@@ -1,7 +1,7 @@
 <?php
 /* 
 Plugin Name: Disable Thumbnails, Threshold and Image Options
-Version: 0.6.1
+Version: 0.6.3
 Description: Disable Thumbnails, Threshold and Image Options
 Author: KGM Servizi
 Author URI: https://kgmservizi.com
@@ -19,12 +19,8 @@ define( 'KGM_THRESHOLD_OPTION', 'kgmdisablethreshold_option_name' );
 define( 'KGM_THUMBNAILS_OPTION', 'kgmdisablethumbnails_option_name' );
 
 // Check WordPress version compatibility - requires WordPress 5.4+ for PHP 7.4+ support
-if ( version_compare( get_bloginfo( 'version' ), '5.4', '<' ) ) {
-	add_action( 'admin_notices', fn() => 
-		print '<div class="notice notice-error"><p><strong>Disable Thumbnails, Threshold and Image Options</strong> requires WordPress 5.4 or higher (PHP 7.4+). Please update WordPress.</p></div>'
-	);
-	return;
-}
+// Use admin_init hook to ensure WordPress is fully loaded
+add_action( 'admin_init', 'kgmdttio_check_wordpress_version' );
 
 if ( is_admin() ) {
 	// Use include_once to prevent multiple inclusions and potential fatal errors
@@ -52,6 +48,24 @@ add_action( 'admin_init', 'kgmdttio_initialize_options' );
 add_action( 'after_setup_theme', 'kgmdttio_apply_filters', 20 );
 
 /**
+ * Check WordPress version compatibility
+ * Called on admin_init to ensure WordPress is fully loaded
+ */
+function kgmdttio_check_wordpress_version(): void {
+	// Only run in admin
+	if ( ! is_admin() ) {
+		return;
+	}
+	
+	// Check if WordPress version is compatible
+	if ( version_compare( get_bloginfo( 'version' ), '5.4', '<' ) ) {
+		add_action( 'admin_notices', fn() => 
+			print '<div class="notice notice-error"><p><strong>Disable Thumbnails, Threshold and Image Options</strong> requires WordPress 5.4 or higher (PHP 7.4+). Please update WordPress.</p></div>'
+		);
+	}
+}
+
+/**
  * Initialize plugin options with current WordPress values
  * Called on admin_init to ensure WordPress is fully loaded
  */
@@ -61,19 +75,50 @@ function kgmdttio_initialize_options(): void {
 		return;
 	}
 	
-	// Initialize JPEG quality option if it doesn't exist
-	if ( false === $GLOBALS['kgmimgquality_options'] ) {
+	// Initialize JPEG quality option if it doesn't exist or is invalid
+	if ( ! $GLOBALS['kgmimgquality_options'] || 
+		 ! is_array( $GLOBALS['kgmimgquality_options'] ) || 
+		 ! isset( $GLOBALS['kgmimgquality_options']['jpeg_quality'] ) ||
+		 ! is_numeric( $GLOBALS['kgmimgquality_options']['jpeg_quality'] ) ||
+		 intval( $GLOBALS['kgmimgquality_options']['jpeg_quality'] ) < 1 ||
+		 intval( $GLOBALS['kgmimgquality_options']['jpeg_quality'] ) > 100 ) {
+		
 		// Get current WordPress JPEG quality (respects existing filters/plugins)
 		$current_quality = apply_filters( 'jpeg_quality', 82 );
-		$GLOBALS['kgmimgquality_options'] = [ 'jpeg_quality' => $current_quality ];
+		
+		// Validate the quality value from filters
+		if ( ! is_numeric( $current_quality ) || $current_quality < 1 || $current_quality > 100 ) {
+			$current_quality = 82; // Fallback to WordPress default
+		}
+		
+		// Preserve existing options and only update jpeg_quality
+		if ( ! is_array( $GLOBALS['kgmimgquality_options'] ) ) {
+			$GLOBALS['kgmimgquality_options'] = [];
+		}
+		$GLOBALS['kgmimgquality_options']['jpeg_quality'] = intval( $current_quality );
 		update_option( KGM_QUALITY_OPTION, $GLOBALS['kgmimgquality_options'] );
 	}
 	
-	// Initialize threshold option if it doesn't exist
-	if ( false === $GLOBALS['kgmdisablethreshold_options'] ) {
+	// Initialize threshold option if it doesn't exist or is invalid
+	if ( ! $GLOBALS['kgmdisablethreshold_options'] || 
+		 ! is_array( $GLOBALS['kgmdisablethreshold_options'] ) || 
+		 ! isset( $GLOBALS['kgmdisablethreshold_options']['new_threshold'] ) ||
+		 ! is_numeric( $GLOBALS['kgmdisablethreshold_options']['new_threshold'] ) ||
+		 intval( $GLOBALS['kgmdisablethreshold_options']['new_threshold'] ) <= 0 ) {
+		
 		// Get current WordPress big image threshold (respects existing filters/plugins)
 		$current_threshold = apply_filters( 'big_image_size_threshold', 2560 );
-		$GLOBALS['kgmdisablethreshold_options'] = [ 'new_threshold' => $current_threshold ];
+		
+		// Validate the threshold value from filters
+		if ( ! is_numeric( $current_threshold ) || $current_threshold <= 0 ) {
+			$current_threshold = 2560; // Fallback to WordPress default
+		}
+		
+		// Preserve existing options and only update new_threshold
+		if ( ! is_array( $GLOBALS['kgmdisablethreshold_options'] ) ) {
+			$GLOBALS['kgmdisablethreshold_options'] = [];
+		}
+		$GLOBALS['kgmdisablethreshold_options']['new_threshold'] = intval( $current_threshold );
 		update_option( KGM_THRESHOLD_OPTION, $GLOBALS['kgmdisablethreshold_options'] );
 	}
 }
