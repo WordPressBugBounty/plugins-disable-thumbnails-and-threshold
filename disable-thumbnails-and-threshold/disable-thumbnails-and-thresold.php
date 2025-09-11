@@ -1,7 +1,7 @@
 <?php
 /* 
 Plugin Name: Disable Thumbnails, Threshold and Image Options
-Version: 0.6
+Version: 0.6.1
 Description: Disable Thumbnails, Threshold and Image Options
 Author: KGM Servizi
 Author URI: https://kgmservizi.com
@@ -45,30 +45,38 @@ $GLOBALS['kgmimgquality_options']       = get_option( KGM_QUALITY_OPTION );
 $GLOBALS['kgmdisablethreshold_options'] = get_option( KGM_THRESHOLD_OPTION );
 
 // Initialize with current WordPress values if options don't exist
-if ( false === $GLOBALS['kgmimgquality_options'] ) {
-	// Get current WordPress JPEG quality (respects existing filters/plugins)
-	$current_quality = apply_filters( 'jpeg_quality', 82 );
-	$GLOBALS['kgmimgquality_options'] = [ 'jpeg_quality' => $current_quality ];
-	
-	// Only update if we have permission - only admin can activate plugins
-	if ( is_admin() && current_user_can( 'manage_options' ) ) {
-		update_option( KGM_QUALITY_OPTION, $GLOBALS['kgmimgquality_options'] );
-	}
-}
-
-if ( false === $GLOBALS['kgmdisablethreshold_options'] ) {
-	// Get current WordPress big image threshold (respects existing filters/plugins)
-	$current_threshold = apply_filters( 'big_image_size_threshold', 2560 );
-	$GLOBALS['kgmdisablethreshold_options'] = [ 'new_threshold' => $current_threshold ];
-	
-	// Only update if we have permission - only admin can activate plugins
-	if ( is_admin() && current_user_can( 'manage_options' ) ) {
-		update_option( KGM_THRESHOLD_OPTION, $GLOBALS['kgmdisablethreshold_options'] );
-	}
-}
+// This will be handled in the admin_init hook to ensure WordPress is fully loaded
+add_action( 'admin_init', 'kgmdttio_initialize_options' );
 
 // Hook to apply filters after themes are loaded to ensure priority
 add_action( 'after_setup_theme', 'kgmdttio_apply_filters', 20 );
+
+/**
+ * Initialize plugin options with current WordPress values
+ * Called on admin_init to ensure WordPress is fully loaded
+ */
+function kgmdttio_initialize_options(): void {
+	// Only run in admin and if user has proper capabilities
+	if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	
+	// Initialize JPEG quality option if it doesn't exist
+	if ( false === $GLOBALS['kgmimgquality_options'] ) {
+		// Get current WordPress JPEG quality (respects existing filters/plugins)
+		$current_quality = apply_filters( 'jpeg_quality', 82 );
+		$GLOBALS['kgmimgquality_options'] = [ 'jpeg_quality' => $current_quality ];
+		update_option( KGM_QUALITY_OPTION, $GLOBALS['kgmimgquality_options'] );
+	}
+	
+	// Initialize threshold option if it doesn't exist
+	if ( false === $GLOBALS['kgmdisablethreshold_options'] ) {
+		// Get current WordPress big image threshold (respects existing filters/plugins)
+		$current_threshold = apply_filters( 'big_image_size_threshold', 2560 );
+		$GLOBALS['kgmdisablethreshold_options'] = [ 'new_threshold' => $current_threshold ];
+		update_option( KGM_THRESHOLD_OPTION, $GLOBALS['kgmdisablethreshold_options'] );
+	}
+}
 
 /**
  * JPEG Quality filter callback
