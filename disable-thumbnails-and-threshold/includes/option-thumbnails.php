@@ -12,8 +12,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
-class kgmdisablethumbnails {
-	private array|false $kgmdisablethumbnails_options;
+class dtat_disable_thumbnails {
+	private array|false $dtat_disablethumbnails_options;
 
 	public function __construct() {
 		add_action( 'admin_menu', [ $this, 'kgmdisablethumbnails_add_plugin_page' ] );
@@ -22,8 +22,8 @@ class kgmdisablethumbnails {
 
 	public function kgmdisablethumbnails_add_plugin_page() {
 		add_management_page(
-			'Image Sizes', 
-			'Image Sizes', 
+			esc_html__( 'Image Sizes', 'disable-thumbnails-and-threshold' ), 
+			esc_html__( 'Image Sizes', 'disable-thumbnails-and-threshold' ), 
 			'manage_options', 
 			'kgmdisablethumbnails', 
 			[ $this, 'kgmdisablethumbnails_create_admin_page' ]
@@ -33,18 +33,18 @@ class kgmdisablethumbnails {
 	public function kgmdisablethumbnails_create_admin_page() {
 		// Check user capabilities for security
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'disable-thumbnails-and-threshold' ) );
 		}
 		
 		// Use cached options to avoid database calls
-		$this->kgmdisablethumbnails_options = $GLOBALS['kgmdisablethumbnails_options'] ?? get_option( KGM_THUMBNAILS_OPTION ); ?>
+		$this->dtat_disablethumbnails_options = $GLOBALS['dtat_disablethumbnails_options'] ?? get_option( DTAT_THUMBNAILS_OPTION ); ?>
 
 		<div class="wrap">
-			<h2>Image Thumbnails</h2>
-			<p><strong>Remember you need to regenerate thumbnails for delete old thumbnails image already generated.</strong></p>
-			<p>Plugin recommended for regenerate thumbnails -> <a href="https://uskgm.it/reg-thumb" target="_blank">Regenerate Thumbnails</a></p>
-			<p>WP-CLI media regeneration -> <a href="https://uskgm.it/WP-CLI-thumb-rgnrt" target="_blank">Documentation</a></p>
-			<p>Flagged image sizes will be disabled.</p>
+			<h2><?php echo esc_html__( 'Image Thumbnails', 'disable-thumbnails-and-threshold' ); ?></h2>
+			<p><strong><?php echo esc_html__( 'Remember you need to regenerate thumbnails for delete old thumbnails image already generated.', 'disable-thumbnails-and-threshold' ); ?></strong></p>
+			<p><?php echo esc_html__( 'Plugin recommended for regenerate thumbnails', 'disable-thumbnails-and-threshold' ); ?> -> <a href="<?php echo esc_url( 'https://uskgm.it/reg-thumb' ); ?>" target="_blank"><?php echo esc_html__( 'Regenerate Thumbnails', 'disable-thumbnails-and-threshold' ); ?></a></p>
+			<p><?php echo esc_html__( 'WP-CLI media regeneration', 'disable-thumbnails-and-threshold' ); ?> -> <a href="<?php echo esc_url( 'https://uskgm.it/WP-CLI-thumb-rgnrt' ); ?>" target="_blank"><?php echo esc_html__( 'Documentation', 'disable-thumbnails-and-threshold' ); ?></a></p>
+			<p><?php echo esc_html__( 'Flagged image sizes will be disabled.', 'disable-thumbnails-and-threshold' ); ?></p>
 			<?php settings_errors(); ?>
 			
 			<form method="post" action="options.php">
@@ -61,49 +61,42 @@ class kgmdisablethumbnails {
 	public function kgmdisablethumbnails_page_init() {
 		register_setting(
 			'kgmdisablethumbnails_option_group',
-			KGM_THUMBNAILS_OPTION, 
+			DTAT_THUMBNAILS_OPTION, 
 			[ $this, 'kgmdisablethumbnails_sanitize' ] 
 		);
 
 		add_settings_section(
 			'kgmdisablethumbnails_setting_section', 
-			'Settings', 
+			esc_html__( 'Settings', 'disable-thumbnails-and-threshold' ), 
 			[ $this, 'kgmdisablethumbnails_section_info' ],
 			'kgmdisablethumbnails-admin' 
 		);
 
 		add_settings_field(
 			'thumbnail',
-			'Thumbnail', 
+			esc_html__( 'Thumbnail', 'disable-thumbnails-and-threshold' ), 
 			[ $this, 'thumbnail_callback' ],
 			'kgmdisablethumbnails-admin', 
 			'kgmdisablethumbnails_setting_section' 
 		);
 		add_settings_field(
 			'medium',
-			'Medium', 
+			esc_html__( 'Medium', 'disable-thumbnails-and-threshold' ), 
 			[ $this, 'medium_callback' ],
 			'kgmdisablethumbnails-admin', 
 			'kgmdisablethumbnails_setting_section' 
 		);
 		add_settings_field(
 			'medium_large',
-			'Medium Large',
+			esc_html__( 'Medium Large', 'disable-thumbnails-and-threshold' ),
 			[ $this, 'medium_large_callback' ],
 			'kgmdisablethumbnails-admin',
 			'kgmdisablethumbnails_setting_section' 
 		);
 		add_settings_field(
 			'large', 
-			'Large', 
+			esc_html__( 'Large', 'disable-thumbnails-and-threshold' ), 
 			[ $this, 'large_callback' ],
-			'kgmdisablethumbnails-admin', 
-			'kgmdisablethumbnails_setting_section' 
-		);
-		add_settings_field(
-			'full', 
-			'Full', 
-			[ $this, 'full_callback' ],
 			'kgmdisablethumbnails-admin', 
 			'kgmdisablethumbnails_setting_section' 
 		);
@@ -111,7 +104,7 @@ class kgmdisablethumbnails {
 		$image_sizes = wp_get_additional_image_sizes();
 		foreach ( $image_sizes as $key => $image_size ) {
 			if ( $image_size['crop'] == 1 ) {
-				$crop = "cropped";
+				$crop = esc_html__( 'cropped', 'disable-thumbnails-and-threshold' );
 			} else {
 				$crop = "";
 			}
@@ -129,13 +122,17 @@ class kgmdisablethumbnails {
 	public function kgmdisablethumbnails_sanitize( array $input ): array {
 		// Check user capabilities for security
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return $GLOBALS['kgmdisablethumbnails_options'] ?? get_option( KGM_THUMBNAILS_OPTION, [] );
+			return $GLOBALS['dtat_disablethumbnails_options'] ?? get_option( DTAT_THUMBNAILS_OPTION, [] );
 		}
 		
 		$sanitary_values = [];
 		$valid           = true;
 		
-		if ( isset( $_POST['kgmdttio_nonce'] ) && wp_verify_nonce( $_POST['kgmdttio_nonce'], 'dt_save_settings' ) ) {
+		if ( ! isset( $_POST['kgmdttio_nonce'] ) || 
+		     ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['kgmdttio_nonce'] ) ), 'dt_save_settings' ) ) {
+			$valid = false;
+			add_settings_error( 'kgmdisablethumbnails_option_notice', 'nonce_error', esc_html__( 'Nonce validation error.', 'disable-thumbnails-and-threshold' ) );
+		} else {
 			if ( isset( $input['thumbnail'] ) ) {
 				$sanitary_values['thumbnail'] = sanitize_text_field($input['thumbnail']);
 			}
@@ -148,9 +145,6 @@ class kgmdisablethumbnails {
 			if ( isset( $input['large'] ) ) {
 				$sanitary_values['large'] = sanitize_text_field($input['large']);
 			}
-			if ( isset( $input['full'] ) ) {
-				$sanitary_values['full'] = sanitize_text_field($input['full']);
-			}
 
 			$image_sizes = wp_get_additional_image_sizes();
 			foreach ( $image_sizes as $key => $image_size ) {
@@ -158,13 +152,10 @@ class kgmdisablethumbnails {
 					$sanitary_values[$key] = sanitize_text_field($input[$key]);
 				}
 			}
-		} else {
-			$valid = false;
-			add_settings_error( 'kgmdisablethumbnails_option_notice', 'nonce_error', 'Nonce validation error.' );
 		}
 
 		if ( ! $valid ) {
-			$sanitary_values = $GLOBALS['kgmdisablethumbnails_options'] ?? get_option( KGM_THUMBNAILS_OPTION );
+			$sanitary_values = $GLOBALS['dtat_disablethumbnails_options'] ?? get_option( DTAT_THUMBNAILS_OPTION );
 		}
 		
 		return $sanitary_values;
@@ -177,56 +168,46 @@ class kgmdisablethumbnails {
 	public function thumbnail_callback() {
 		printf(
 			'<label class="switch"><input type="checkbox" name="%s[thumbnail]" id="thumbnail" value="thumbnail" %s><span class="slider"></span></label>',
-			esc_attr( KGM_THUMBNAILS_OPTION ),
-			( is_array( $this->kgmdisablethumbnails_options ) && isset( $this->kgmdisablethumbnails_options['thumbnail'] ) && $this->kgmdisablethumbnails_options['thumbnail'] === 'thumbnail' ) ? 'checked' : ''
+			esc_attr( DTAT_THUMBNAILS_OPTION ),
+			( is_array( $this->dtat_disablethumbnails_options ) && isset( $this->dtat_disablethumbnails_options['thumbnail'] ) && $this->dtat_disablethumbnails_options['thumbnail'] === 'thumbnail' ) ? 'checked' : ''
 		);
 	}
 
 	public function medium_callback() {
 		printf(
 			'<label class="switch"><input type="checkbox" name="%s[medium]" id="medium" value="medium" %s><span class="slider"></span></label>',
-			esc_attr( KGM_THUMBNAILS_OPTION ),
-			( is_array( $this->kgmdisablethumbnails_options ) && isset( $this->kgmdisablethumbnails_options['medium'] ) && $this->kgmdisablethumbnails_options['medium'] === 'medium' ) ? 'checked' : ''
+			esc_attr( DTAT_THUMBNAILS_OPTION ),
+			( is_array( $this->dtat_disablethumbnails_options ) && isset( $this->dtat_disablethumbnails_options['medium'] ) && $this->dtat_disablethumbnails_options['medium'] === 'medium' ) ? 'checked' : ''
 		);
 	}
 
 	public function medium_large_callback() {
 		printf(
 			'<label class="switch"><input type="checkbox" name="%s[medium_large]" id="medium_large" value="medium_large" %s><span class="slider"></span></label>',
-			esc_attr( KGM_THUMBNAILS_OPTION ),
-			( is_array( $this->kgmdisablethumbnails_options ) && isset( $this->kgmdisablethumbnails_options['medium_large'] ) && $this->kgmdisablethumbnails_options['medium_large'] === 'medium_large' ) ? 'checked' : ''
+			esc_attr( DTAT_THUMBNAILS_OPTION ),
+			( is_array( $this->dtat_disablethumbnails_options ) && isset( $this->dtat_disablethumbnails_options['medium_large'] ) && $this->dtat_disablethumbnails_options['medium_large'] === 'medium_large' ) ? 'checked' : ''
 		);
 	}
 
 	public function large_callback() {
 		printf(
 			'<label class="switch"><input type="checkbox" name="%s[large]" id="large" value="large" %s><span class="slider"></span></label>',
-			esc_attr( KGM_THUMBNAILS_OPTION ),
-			( is_array( $this->kgmdisablethumbnails_options ) && isset( $this->kgmdisablethumbnails_options['large'] ) && $this->kgmdisablethumbnails_options['large'] === 'large' ) ? 'checked' : ''
-		);
-	}
-
-	public function full_callback() {
-		printf(
-			'<label class="switch"><input type="checkbox" name="%s[full]" id="full" value="full" %s><span class="slider"></span></label>',
-			esc_attr( KGM_THUMBNAILS_OPTION ),
-			( is_array( $this->kgmdisablethumbnails_options ) && isset( $this->kgmdisablethumbnails_options['full'] ) && $this->kgmdisablethumbnails_options['full'] === 'full' ) ? 'checked' : ''
+			esc_attr( DTAT_THUMBNAILS_OPTION ),
+			( is_array( $this->dtat_disablethumbnails_options ) && isset( $this->dtat_disablethumbnails_options['large'] ) && $this->dtat_disablethumbnails_options['large'] === 'large' ) ? 'checked' : ''
 		);
 	}
 
 	public function ext_callback( string $name ): void {
-		// Sanitize the name parameter to prevent XSS attacks - not trust input
-		$sanitized_name = esc_attr($name);
 		printf(
 			'<label class="switch"><input type="checkbox" name="%s[%s]" id="%s" value="%s" %s><span class="slider"></span></label>',
-			esc_attr( KGM_THUMBNAILS_OPTION ),
-			$sanitized_name,
-			$sanitized_name,
-			$sanitized_name,
-			( is_array( $this->kgmdisablethumbnails_options ) && isset( $this->kgmdisablethumbnails_options[$name] ) && $this->kgmdisablethumbnails_options[$name] === $name ) ? 'checked' : ''
+			esc_attr( DTAT_THUMBNAILS_OPTION ),
+			esc_attr( $name ),
+			esc_attr( $name ),
+			esc_attr( $name ),
+			( is_array( $this->dtat_disablethumbnails_options ) && isset( $this->dtat_disablethumbnails_options[$name] ) && $this->dtat_disablethumbnails_options[$name] === $name ) ? 'checked' : ''
 		);
 	}
 
 }
 if ( is_admin() )
-	$kgmdisablethumbnails = new kgmdisablethumbnails();
+	$dtat_disable_thumbnails = new dtat_disable_thumbnails();

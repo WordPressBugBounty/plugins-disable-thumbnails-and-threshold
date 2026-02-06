@@ -1,11 +1,11 @@
 === Disable Thumbnails, Threshold and Image Options ===
 Contributors: kgmservizi
 Donate link: https://kgmservizi.com
-Tags: disable, media, thumbnails, disable thumbnails, disable threshold, disable images, image options
+Tags: thumbnails, disable thumbnails, disable threshold, disable images, image options
 Requires at least: 5.4
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.6.3
+Stable tag: 0.6.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -133,6 +133,12 @@ Go to settings page inside menù Tools -> Image Threshold&EXIF
 
 == Changelog ==
 
+= 0.6.5 =
+* Bugfix.
+
+= 0.6.4 =
+* Bugfix, removed option full.
+
 = 0.6.3 =
 * Fix for version check and update old settings.
 
@@ -142,75 +148,14 @@ Go to settings page inside menù Tools -> Image Threshold&EXIF
 **Smart Initialization**
 **Intelligent Debug System**
 
-= 0.6.1 =
-* **WordPress & PHP Requirements**: Updated minimum requirement to WordPress 5.4+ and PHP 7.4+
-* **Code Modernization**
-* **Performance Optimization**
-* **Smart Initialization**
-* **Intelligent Debug System**
-
-= 0.5.2 =
-* 6.6 compatibility.
-
-= 0.5.1 =
-* Bugfix for UI.
-
-= 0.5 =
-* Bugfix.
-
-= 0.4.2 =
-* Bugfix.
-
-= 0.4.1 =
-* Bugfix.
-
-= 0.4 =
-* Totally redesigned.
-
-= 0.3.8 =
-* Bugfix for regeneration.
-
-= 0.3.7 =
-* Bugfix.
-
-= 0.3.6 =
-* Fix functions.
-
-= 0.3.5 =
-* Fix image quality.
-
-= 0.3.4 =
-* 5.7 compatibility.
-
-= 0.3.3 =
-* Fix PHP 7.4 error
-
-= 0.3.2 =
-* Bug fix
-
-= 0.3.1 =
-* Bug fix
-
-= 0.3 =
-* New compatibility and bug fix
-
-= 0.2.1 =
-* Important fix!
-
-= 0.2 =
-* new function
-
-= 0.1.2 =
-* better code quality
-
-= 0.1.1 =
-* _blank for link
-
-= 0.1 =
-* Initial release
-
 
 == Upgrade Notice ==
+
+= 0.6.5 =
+Bugfix.
+
+= 0.6.4 =
+Bugfix, removed option full.
 
 = 0.6.3 =
 Fix for version check and update old settings.
@@ -220,72 +165,5 @@ Fix for version check and update old settings.
 **Performance Optimization**
 **Smart Initialization**
 **Intelligent Debug System**
-
-= 0.6.1 =
-**WordPress & PHP Requirements**: Updated minimum requirement to WordPress 5.4+ and PHP 7.4+
-**Code Modernization**
-**Performance Optimization**
-**Smart Initialization**
-**Intelligent Debug System**
-
-= 0.5.2 =
-6.6 compatibility.
-
-= 0.5.1 =
-Bugfix for UI.
-
-= 0.5 =
-Bugfix.
-
-= 0.4.2 =
-Bugfix.
-
-= 0.4.1 =
-Bugfix.
-
-= 0.4 =
-Totally redesigned.
-
-= 0.3.8 =
-Bugfix for regeneration.
-
-= 0.3.7 =
-Bugfix.
-
-= 0.3.6 =
-Fix functions.
-
-= 0.3.5 =
-Fix image quality.
-
-= 0.3.4 =
-Compatibility WordPress 5.7
-
-= 0.3.3 =
-Fix PHP 7.4 error
-
-= 0.3.2 =
-Bug fix
-
-= 0.3.1 =
-Bug fix
-
-= 0.3 =
-New compatibility and bug fix
-
-= 0.2.1 =
-Important fix!
-
-= 0.2 =
-new function
-
-= 0.1.2 =
-better code quality
-
-= 0.1.1 =
-_blank for link
-
-= 0.1 =
-Initial release.
 
 `<?php code(); // goes in backticks ?>`
