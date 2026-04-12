@@ -1,7 +1,7 @@
 <?php
 /* 
 Plugin Name: Disable Thumbnails, Threshold and Image Options
-Version: 0.6.5
+Version: 0.7.0
 Description: Disable Thumbnails, Threshold and Image Options
 Author: KGM Servizi
 Author URI: https://kgmservizi.com
@@ -21,7 +21,7 @@ define( 'DTAT_QUALITY_OPTION', 'dtat_imgquality_option_name' );
 define( 'DTAT_THRESHOLD_OPTION', 'dtat_disablethreshold_option_name' );
 define( 'DTAT_THUMBNAILS_OPTION', 'dtat_disablethumbnails_option_name' );
 define( 'DTAT_MIGRATION_OPTION', 'dtat_migration_done' );
-define( 'DTAT_VERSION', '0.6.5' );
+define( 'DTAT_VERSION', '0.7.0' );
 
 /**
  * PHPCS Suppressions
@@ -40,15 +40,13 @@ define( 'DTAT_VERSION', '0.6.5' );
 add_action( 'admin_init', 'dtat_check_wordpress_version' );
 
 if ( is_admin() ) {
-	// Use include_once to prevent multiple inclusions and potential fatal errors
-	include_once( plugin_dir_path( __FILE__ ) . 'includes/option-thumbnails.php');
-	include_once( plugin_dir_path( __FILE__ ) . 'includes/option-quality.php');
-	include_once( plugin_dir_path( __FILE__ ) . 'includes/option-threshold-exif.php');
-	add_filter( 'plugin_action_links_' . plugin_basename(__FILE__), 'dtat_action_links' );
+	require_once plugin_dir_path( __FILE__ ) . 'includes/option-thumbnails.php';
+	require_once plugin_dir_path( __FILE__ ) . 'includes/option-quality.php';
+	require_once plugin_dir_path( __FILE__ ) . 'includes/option-threshold-exif.php';
+	add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'dtat_action_links' );
 	add_action( 'admin_enqueue_scripts', 'dtat_admin_styles' );
+	add_action( 'admin_init', 'dtat_maybe_migrate_options' );
 }
-
-dtat_maybe_migrate_options();
 
 /**
  *  
@@ -63,11 +61,13 @@ $GLOBALS['dtat_disablethumbnails_options'] = get_option( DTAT_THUMBNAILS_OPTION 
 /**
  * Migrate legacy option names (`kgm*`) to DTAT-prefixed names.
  *
- * @since 0.6.5
- *
  * Introduced to ensure backward compatibility when renaming options.
  * This migration runs once (per site) and copies existing values into
  * the new option names before deleting the legacy entries.
+ *
+ * @since   0.6.5
+ * @package Disable_Thumbnails_Threshold
+ * @return  void
  */
 function dtat_maybe_migrate_options(): void {
 	static $processed = false;
@@ -116,8 +116,13 @@ add_action( 'admin_init', 'dtat_initialize_options' );
 add_action( 'after_setup_theme', 'dtat_apply_filters', 20 );
 
 /**
- * Check WordPress version compatibility
- * Called on admin_init to ensure WordPress is fully loaded
+ * Check WordPress version compatibility.
+ *
+ * Called on admin_init to ensure WordPress is fully loaded.
+ *
+ * @since   0.6.3
+ * @package Disable_Thumbnails_Threshold
+ * @return  void
  */
 function dtat_check_wordpress_version(): void {
 	// Only run in admin
@@ -127,18 +132,33 @@ function dtat_check_wordpress_version(): void {
 	
 	// Check if WordPress version is compatible
 	if ( version_compare( get_bloginfo( 'version' ), '5.4', '<' ) ) {
-		add_action( 'admin_notices', function() {
-			printf( '<div class="notice notice-error"><p><strong>%s</strong> %s</p></div>',
-				esc_html__( 'Disable Thumbnails, Threshold and Image Options', 'disable-thumbnails-and-threshold' ),
-				esc_html__( 'requires WordPress 5.4 or higher (PHP 7.4+). Please update WordPress.', 'disable-thumbnails-and-threshold' )
-			);
-		} );
+		add_action( 'admin_notices', 'dtat_wordpress_version_notice' );
 	}
 }
 
 /**
- * Initialize plugin options with current WordPress values
- * Called on admin_init to ensure WordPress is fully loaded
+ * Display admin notice for incompatible WordPress version.
+ *
+ * @since   0.6.3
+ * @package Disable_Thumbnails_Threshold
+ * @return  void
+ */
+function dtat_wordpress_version_notice(): void {
+	printf(
+		'<div class="notice notice-error"><p><strong>%s</strong> %s</p></div>',
+		esc_html__( 'Disable Thumbnails, Threshold and Image Options', 'disable-thumbnails-and-threshold' ),
+		esc_html__( 'requires WordPress 5.4 or higher (PHP 7.4+). Please update WordPress.', 'disable-thumbnails-and-threshold' )
+	);
+}
+
+/**
+ * Initialize plugin options with current WordPress values.
+ *
+ * Called on admin_init to ensure WordPress is fully loaded.
+ *
+ * @since   0.6.3
+ * @package Disable_Thumbnails_Threshold
+ * @return  void
  */
 function dtat_initialize_options(): void {
 	// Only run in admin and if user has proper capabilities
@@ -197,7 +217,11 @@ function dtat_initialize_options(): void {
 }
 
 /**
- * JPEG Quality filter callback
+ * JPEG Quality filter callback.
+ *
+ * @since   0.1
+ * @package Disable_Thumbnails_Threshold
+ * @return  int The JPEG quality value (1-100).
  */
 function dtat_jpeg_quality_filter(): int {
 	$dtat_imgquality_options = $GLOBALS['dtat_imgquality_options'] ?? get_option( DTAT_QUALITY_OPTION, [] );
@@ -217,7 +241,11 @@ function dtat_jpeg_quality_filter(): int {
 }
 
 /**
- * Big image threshold filter callback
+ * Big image threshold filter callback.
+ *
+ * @since   0.1
+ * @package Disable_Thumbnails_Threshold
+ * @return  int The big image size threshold in pixels.
  */
 function dtat_big_image_threshold_filter(): int {
 	$dtat_disablethreshold_options = $GLOBALS['dtat_disablethreshold_options'] ?? get_option( DTAT_THRESHOLD_OPTION, [] );
@@ -237,7 +265,12 @@ function dtat_big_image_threshold_filter(): int {
 }
 
 /**
- * Thumbnail sizes filter callback
+ * Thumbnail sizes filter callback.
+ *
+ * @since   0.1
+ * @package Disable_Thumbnails_Threshold
+ * @param   array $sizes Registered intermediate image sizes.
+ * @return  array Filtered image sizes with disabled ones removed.
  */
 function dtat_thumbnail_sizes_filter( array $sizes ): array {
 	$dtat_disablethumbnails_options = $GLOBALS['dtat_disablethumbnails_options'] ?? get_option( DTAT_THUMBNAILS_OPTION, [] );
@@ -253,7 +286,11 @@ function dtat_thumbnail_sizes_filter( array $sizes ): array {
 }
 
 /**
- * Apply plugin filters after themes are loaded to ensure priority
+ * Apply plugin filters after themes are loaded to ensure priority.
+ *
+ * @since   0.1
+ * @package Disable_Thumbnails_Threshold
+ * @return  void
  */
 function dtat_apply_filters(): void {
 	// Prevent multiple applications
@@ -279,44 +316,48 @@ function dtat_apply_filters(): void {
 		$jpeg_quality = $dtat_imgquality_options['jpeg_quality'] ?? null;
 	}
 	
-	if ( $jpeg_quality && is_numeric($jpeg_quality) && ($quality = intval($jpeg_quality)) > 0 && $quality <= 100 ) {
-		add_filter("jpeg_quality", 'dtat_jpeg_quality_filter', 100);
+	$quality = $jpeg_quality ? intval( $jpeg_quality ) : 0;
+	if ( $jpeg_quality && is_numeric( $jpeg_quality ) && $quality > 0 && $quality <= 100 ) {
+		add_filter( 'jpeg_quality', 'dtat_jpeg_quality_filter', 100 );
 	}
-	
+
 	// Apply threshold filters
 	if ( is_array( $dtat_disablethreshold_options ) ) {
 		// Set new threshold
-		if ( !empty( $dtat_disablethreshold_options['new_threshold'] ) && is_numeric($dtat_disablethreshold_options['new_threshold']) && ($threshold_int = intval($dtat_disablethreshold_options['new_threshold'])) > 0 ) {
-			add_filter("big_image_size_threshold", 'dtat_big_image_threshold_filter', 100);
+		if ( ! empty( $dtat_disablethreshold_options['new_threshold'] )
+			&& is_numeric( $dtat_disablethreshold_options['new_threshold'] ) ) {
+			$threshold_int = intval( $dtat_disablethreshold_options['new_threshold'] );
+			if ( $threshold_int > 0 ) {
+				add_filter( 'big_image_size_threshold', 'dtat_big_image_threshold_filter', 100 );
+			}
 		}
-		
+
 		// Disable threshold
-		if ( $dtat_disablethreshold_options['disable_threshold'] ?? null ) {
-			if ($dtat_disablethreshold_options['disable_threshold'] == 'disable_threshold') {
-				add_filter( 'big_image_size_threshold', '__return_false', 100 );
-			}
+		if ( 'disable_threshold' === ( $dtat_disablethreshold_options['disable_threshold'] ?? null ) ) {
+			add_filter( 'big_image_size_threshold', '__return_false', 100 );
 		}
-		
+
 		// Disable EXIF rotation
-		if ( $dtat_disablethreshold_options['disable_image_rotation_exif'] ?? null ) {
-			if ($dtat_disablethreshold_options['disable_image_rotation_exif'] == 'disable_image_rotation_exif') {
-				add_filter( 'wp_image_maybe_exif_rotate', '__return_zero', 100, 2 );
-			}
+		if ( 'disable_image_rotation_exif' === ( $dtat_disablethreshold_options['disable_image_rotation_exif'] ?? null ) ) {
+			add_filter( 'wp_image_maybe_exif_rotate', '__return_zero', 100, 2 );
 		}
 	}
-	
+
 	// Apply thumbnail size filters
-	if ( !empty( $dtat_disablethumbnails_options ) ) {
-		add_filter( 'intermediate_image_sizes', 'dtat_thumbnail_sizes_filter', 100);
+	if ( ! empty( $dtat_disablethumbnails_options ) ) {
+		add_filter( 'intermediate_image_sizes', 'dtat_thumbnail_sizes_filter', 100 );
 	}
 }
 
 // All filters are now applied in dtat_apply_filters() function after themes are loaded
 
 /**
- * 
- * Add link on plugin list page
- * 
+ * Add settings links on plugin list page.
+ *
+ * @since   0.1
+ * @package Disable_Thumbnails_Threshold
+ * @param   array $actions Existing plugin action links.
+ * @return  array Modified action links with settings pages prepended.
  */
 function dtat_action_links( array $actions ): array {
 	// Check if user has proper capabilities before showing action links
@@ -324,18 +365,21 @@ function dtat_action_links( array $actions ): array {
 		return $actions;
 	}
 	
-	$mylinks = [ 
-		'<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmdisablethumbnails') ) .'">' . esc_html__( 'Image sizes', 'disable-thumbnails-and-threshold' ) . '</a>', 
-		'<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmimgquality') ) .'">' . esc_html__( 'Image Quality', 'disable-thumbnails-and-threshold' ) . '</a>', 
-		'<a href="'. esc_url( get_admin_url(null, 'tools.php?page=kgmdisablethreshold') ) .'">' . esc_html__( 'Threshold & EXIF', 'disable-thumbnails-and-threshold' ) . '</a>' 
+	$mylinks = [
+		'<a href="' . esc_url( get_admin_url( null, 'tools.php?page=kgmdisablethumbnails' ) ) . '">' . esc_html__( 'Image sizes', 'disable-thumbnails-and-threshold' ) . '</a>',
+		'<a href="' . esc_url( get_admin_url( null, 'tools.php?page=kgmimgquality' ) ) . '">' . esc_html__( 'Image Quality', 'disable-thumbnails-and-threshold' ) . '</a>',
+		'<a href="' . esc_url( get_admin_url( null, 'tools.php?page=kgmdisablethreshold' ) ) . '">' . esc_html__( 'Threshold & EXIF', 'disable-thumbnails-and-threshold' ) . '</a>',
 	];
 	return array_merge( $mylinks, $actions );
 }
 
 /**
- * 
- * Load admin styles
- * 
+ * Load admin styles on plugin settings pages.
+ *
+ * @since   0.1
+ * @package Disable_Thumbnails_Threshold
+ * @param   string $hook The current admin page hook suffix.
+ * @return  void
  */
 function dtat_admin_styles( string $hook ): void {
 	/**
@@ -350,23 +394,22 @@ function dtat_admin_styles( string $hook ): void {
 		return;
 	}
 	
-	if ( $screen->base === 'tools_page_kgmdisablethumbnails' || $screen->base === 'tools_page_kgmdisablethreshold' ) {
-		$css_url = plugins_url('includes/admin.css', __FILE__);
-		if ( $css_url ) {
-			wp_enqueue_style( 'dtat_admin_css', $css_url, array(), DTAT_VERSION );
-		}
+	if ( 'tools_page_kgmdisablethumbnails' === $screen->base || 'tools_page_kgmdisablethreshold' === $screen->base ) {
+		wp_enqueue_style( 'dtat-admin-css', plugins_url( 'includes/admin.css', __FILE__ ), [], DTAT_VERSION );
 	}
 }
 
 /**
- *  
- * Uninstallation
- * 
+ * Clean up plugin options on uninstall.
+ *
+ * @since   0.1
+ * @package Disable_Thumbnails_Threshold
+ * @return  void
  */
 register_uninstall_hook( __FILE__, 'dtat_plugin_uninstall' );
 function dtat_plugin_uninstall(): void {
-    delete_option( DTAT_THUMBNAILS_OPTION );
-    delete_option( DTAT_THRESHOLD_OPTION );
-    delete_option( DTAT_QUALITY_OPTION );
-    delete_option( DTAT_MIGRATION_OPTION );
+	delete_option( DTAT_THUMBNAILS_OPTION );
+	delete_option( DTAT_THRESHOLD_OPTION );
+	delete_option( DTAT_QUALITY_OPTION );
+	delete_option( DTAT_MIGRATION_OPTION );
 }
